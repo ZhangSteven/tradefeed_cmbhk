@@ -1,6 +1,10 @@
 # coding=utf-8
 # 
 from xlrd import open_workbook
+from utils.excel import rowToList, worksheetToLines
+from utils.utility import fromExcelOrdinal
+from os.path import join
+from itertools import takewhile
 import logging
 logger = logging.getLogger(__name__)
 
@@ -13,126 +17,22 @@ def readHolding(ws, startRow):
 	Read the Excel worksheet containing the holdings, return an iterable object
 	on the list of holding positions. Each position is a dictionary.
 	"""
-	headers = readHeaders(ws, startRow)
-	position = lambda headers, values: dict(zip(headers, values))
-	emptyString = lambda s: s == ''
+	nonEmptyString = lambda s: s != ''
+	headers = list(takewhile(nonEmptyString, rowToList(ws, startRow)))
+	position = lambda values: dict(zip(headers, values))
+	nonEmptyLine = lambda L: False if len(L) == 0 else nonEmptyString(L[0])
+	toDateString = lambda f: fromExcelOrdinal(f).strftime('%m%d%Y')
 
-	return map(partial(position, headers)
-			  , map(partial(filterfalse, emptyString)
-			  	   , takewhile(firstCellNotEmpty
-						 	  , worksheetToLines(ws, getStartRow()+2))))
-
-
-
-def readHeaders(ws, startRow):
-    """
-    [Worksheet] ws, [Int] startRow => [List] headers
-    """
-    toString = lambda s: str(s)
-    firstLine = lambda s: s.split('\n')[0].strip()
-    nonEmptyString = lambda s: s != ''
-
-    return list(filter(nonEmptyString
-                      , map(firstLine
-                           , map(toString
-                                , rowToList(ws, startRow)))))
+	def updateValue(p):
+		p['As of Dt'] = toDateString(p['As of Dt'])
+		p['Stl Date'] = toDateString(p['Stl Date'])
+		return p
 
 
-
-def readCash(ws):
-	"""
-	[Worksheet] ws => [List] list of (currency, amount)
-
-	Return looks like [('HKD', 1234.67), ('USD', 89.88)]
-	"""
-	isClosingBalance = lambda s: True if isinstance(s, str) and s.startswith('Closing Balance') \
-									else False
-	isCashLine = lambda L: True if any(isClosingBalance(x) for x in L) else False
-
-
-	def cashEntry(lineItems):
-		"""
-		[List] lineItems => [Tuple] (currency, amount)
-		"""
-		isFloat = lambda x: True if isinstance(x, float) else False
-		isCurrencyString = lambda x: True if isinstance(x, str) \
-											and len(x) > 6 and x[0] == '(' \
-											and x[6] == ')' \
-											else False
-		amount = firstOf(isFloat, lineItems)
-		currencyString = firstOf(isCurrencyString, lineItems)
-		if amount == None or currencyString == None:
-			raise ValueError('cashEntry(): cannot parse cash entry: {0}'.format(lineItems))
-
-		return (currencyString.strip()[2:5], amount)
-
-
-	return map(cashEntry, filter(isCashLine, worksheetToLines(ws)))
-
-
-
-def firstCellNotEmpty(lineItems):
-	"""
-	[List] lineItems => [Boolean] is the first item an empty string?
-
-	If the list has a first cell and it is an empty string, return False;
-	else return True.
-	"""
-	try:
-		return lineItems[0] != ''
-
-	except IndexError:
-		return False
-
-
-
-def genevaPosition(portId, date, position):
-	"""
-	[String] portId, [String] date, [Dictionary] position => 
-		[Dictionary] gPosition
-	
-	A Geneva position is a dictionary object that has the following
-	keys:
-
-	portfolio|custodian|date|geneva_investment_id|ISIN|bloomberg_figi|name
-	|currency|quantity
-	
-	"""
-	genevaPos = {}
-	genevaPos['portfolio'] = portId
-	genevaPos['custodian'] = getCustodian()
-	genevaPos['date'] = date
-	genevaPos['name'] = position['Securities Name']
-	genevaPos['currency'] = position['Ccy']
-	genevaPos['quantity'] = position['Traded Quantity (Ledger Balance)']
-	genevaPos['geneva_investment_id'] = ''
-	genevaPos['ISIN'] = position['Securities Identifier']
-	genevaPos['bloomberg_figi'] = ''
-	
-	return genevaPos
-
-
-
-def genevaCash(portId, date, cash):
-	"""
-	[String] portId, [String] date, [Tuple] cash => 
-		[Dictionary] gCash
-
-	cash: a tuple like ('HKD', 1234.56)
-
-	A Geneva cash position is a dictionary object that has the following
-	keys:
-
-	portfolio|custodian|date|currency|balance
-	
-	"""
-	genevaCash = {}
-	genevaCash['portfolio'] = portId
-	genevaCash['custodian'] = getCustodian()
-	genevaCash['date'] = date
-	(genevaCash['currency'], genevaCash['balance']) = cash
-	
-	return genevaCash
+	return map( updateValue
+			  , map( position
+			  	   , takewhile( nonEmptyLine
+						 	  , worksheetToLines(ws, startRow+1))))
 
 
 
@@ -227,10 +127,10 @@ def isValidFile(filename):
 
 
 if __name__ == '__main__':
-    import logging.config
-    logging.config.fileConfig('logging.config', disable_existing_loggers=False)
+	import logging.config
+	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-
-    # inputFile = join(getCurrentDirectory(), 'samples', 'DailyCashHolding-client name-20190531.XLS')
-    inputFile = join(getCurrentDirectory(), 'samples', 'SecurityHoldingPosition-client name-20190531.XLS')
-    toCsv('40017', inputFile, getCurrentDirectory(), 'global_spc_')
+	from tradefeed_cmbhk.utility import getCurrentDir
+	inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
+	for x in readHolding(open_workbook(inputFile).sheet_by_index(0), 3):
+		print(x)
