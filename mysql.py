@@ -5,6 +5,7 @@
 
 import pymysql
 from tradefeed_cmbhk.utility import getDbName, getDbHost, getDbUser, getDbPassword
+from toolz import curried
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,43 +33,36 @@ def lookupIDFromHash(hashValue):
 
 
 
-def saveResultsToDB(directory, resultList):
+def addHashToDB(hashValue):
 	"""
-	input: [String] directory, [Iterable] resultList
-	output: save the results into database
+	[String] hashValue
 
-	where directory is the directory containing the files, and resultList
-	is a list of tuple (file, status), status is either 0 or 1.
+	Add the hash value as a new record to the database, no matter whether
+	the hash value exists.
 	"""
-	def toDBRecord(result):
-		"""
-		([String] file, [Int] status) => 
-			([String] file, [String] datetime, [String] status)
-		"""
-		file, status, _, _ = result
-		return (file
-				, strftime('%Y-%m-%d %H:%M:%S', localtime(getmtime(join(directory, file))))
-				, str(status))
-
-	# we need to convert to list first and tell whether it's empty because
-	# emtpy list will cause cursor.executemany() to fail
-	records = list(map(toDBRecord, resultList))
-	if records == []:
-		logger.debug('saveResultsToDB(): no records to save')
-		return
-
-
 	try:
-		with connection.cursor() as cursor:
-			sql = "REPLACE INTO file (file_name, last_modified, status) \
-					VALUES (%s, %s, %s)"
-			cursor.executemany(sql, records)
-
-			# save changes
-			connection.commit()
-
+		with getConnection().cursor() as cursor:
+			sql = "INSERT INTO trades (hash) VALUES ('{0}')".format(hashValue)
+			cursor.execute(sql)
+			getConnection().commit()
 	except:
-		logger.exception('saveResultsToDB(): ')
+		logger.exception('addHashToDB(): ')
+
+
+
+def findOrCreateIdFromHash(hashValue):
+	"""
+	[String] hashValue => [Int] trade id with that hash value.
+
+	If a record with the hash value exists in database, find the id
+	associated with it;
+
+	If not, then create a new record for the hash value and return the id 
+	associated with it.
+	"""
+	return (lambda x: x if x != None else \
+						lookupIDFromHash(curried.do(addHashToDB)(hashValue)))\
+				(lookupIDFromHash(hashValue))
 
 
 
@@ -105,4 +99,6 @@ if __name__ == '__main__':
 	"""
 
 	print(lookupIDFromHash('-123'))
+	print(findOrCreateIdFromHash('-123'))
+	print(findOrCreateIdFromHash('-456'))
 	closeConnection()
