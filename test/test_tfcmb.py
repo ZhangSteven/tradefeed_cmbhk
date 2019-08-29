@@ -17,7 +17,8 @@ class TestTFCmb(unittest2.TestCase):
 
     def testReadHolding(self):
         inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
-        holding = list(readHolding(open_workbook(inputFile).sheet_by_index(0), 3))
+        date, holding = (lambda x: (x[0], list(x[1])))(readHolding(inputFile))
+        self.assertEqual('08082019', date)
         self.assertEqual(3, len(holding))
         self.verifyHolding(holding[0])
 
