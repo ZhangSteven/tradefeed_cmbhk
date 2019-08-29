@@ -4,7 +4,7 @@
 import unittest2
 from os.path import join
 from tradefeed_cmbhk.utility import getCurrentDir
-from tradefeed_cmbhk.tfcmb import readHolding
+from tradefeed_cmbhk.tfcmb import readHolding, cmbPosition
 from xlrd import open_workbook
 
 
@@ -30,6 +30,13 @@ class TestTFCmb(unittest2.TestCase):
         self.assertEqual('2019-08-22', date)
         self.assertEqual(2, len(holding))
         self.verifyHolding2(holding[1])
+
+
+
+    def testCmbPosition(self):
+        inputFile = join(getCurrentDir(), 'samples', 'TD22082019.xlsx')
+        holding = list(map(cmbPosition, readHolding(inputFile)[1]))
+        self.verifyCmbHolding(holding[0])
 
 
 
@@ -63,3 +70,19 @@ class TestTFCmb(unittest2.TestCase):
         self.assertAlmostEqual(946319.44, record['Settle Amount'])
 
 
+
+    def verifyCmbHolding(self, record):
+        self.assertEqual('20190519052401', record['CLIENT A/C NO.'])
+        self.assertEqual('11', record['SEC ID TYPE'])
+        self.assertEqual('XS1960071303', record['SEC ID'])
+        self.assertEqual('BUY', record['TRAN TYPE'])
+        self.assertEqual('22082019', record['TRADE DATE'])
+        self.assertEqual('26082019', record['SETT DATE'])
+        self.assertEqual(1000000.00, record['QTY/NOMINAL'])
+        self.assertEqual('USD', record['SEC CCY'])
+        self.assertEqual(101.875, record['PRICE'])
+        self.assertEqual(1018750, record['GROSS AMT'])
+        self.assertEqual('USD', record['FEE CCY'])
+        self.assertEqual(42700, record['ACCRUED INT'])
+        self.assertEqual(1061450, record['NET AMT'])
+        self.assertEqual(1061450, record['NET AMT BASE'])

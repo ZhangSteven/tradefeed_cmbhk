@@ -10,7 +10,7 @@ from os.path import join
 from datetime import datetime
 from itertools import takewhile, dropwhile, chain
 from functools import partial
-import hashlib
+import hashlib, csv
 import logging
 logger = logging.getLogger(__name__)
 
@@ -142,33 +142,15 @@ def toCsv(inputFile, outputDir):
 	outputFile = join(outputDir, 'Trade Blotter Nomura ' + date + '.csv')
 	positionToRow = lambda position: [(lambda h: position[h] if h in position else '')(h) \
 										for h in headers]
-	writeCsv(outputFile, chain( [headers]
-							  , map( positionToRow
-								   , map(cmbPosition, positions))))
+	writeCsv( outputFile
+			, chain( [headers]
+				   , map( positionToRow
+						, map(cmbPosition, positions)))\
+			, quotechar='"'\
+			, quoting=csv.QUOTE_NONNUMERIC)
+
 	return outputFile
 
-
-
-def isHoldingFile(filename):
-	"""
-	[String] filename => [Bool] is this a holding file
-	"""
-	return fileNameFromPath(filename).split('.')[0].\
-			lower().startswith('securityholdingposition')
-
-
-
-def isCashFile(filename):
-	"""
-	[String] filename => [Bool] is this a holding file
-	"""
-	return fileNameFromPath(filename).split('.')[0].\
-			lower().startswith('dailycashholding')
-
-
-
-def isValidFile(filename):
-	return isHoldingFile(filename) or isCashFile(filename)
 
 
 
@@ -177,5 +159,5 @@ if __name__ == '__main__':
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
 	from tradefeed_cmbhk.utility import getCurrentDir
-	inputFile = join(getCurrentDir(), 'samples', 'TD22082019.xlsx')
+	inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
 	print(toCsv(inputFile, ''))
