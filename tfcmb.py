@@ -40,7 +40,8 @@ def getPosition(lines):
 	nonEmptyString = lambda s: s != ''
 	position = lambda headers, values: dict(zip(headers, values))
 	nonEmptyLine = lambda L: False if len(L) == 0 else nonEmptyString(L[0])
-	headerLine = lambda L: L[0] == 'ISIN' if len(L) > 0 else False
+	headerLine = lambda L: L[0] == 'Fund' if len(L) > 0 else False
+	nomuraOnly = lambda p: p['Fund'] == '40017-B'
 
 	def updateValue(p):
 		p['As of Dt'] = toDateString(p['As of Dt'])
@@ -49,8 +50,9 @@ def getPosition(lines):
 
 	headers = list(takewhile(nonEmptyString, firstOf(headerLine, lines)))
 	return map( updateValue
-			  , map( partial(position, headers)
-			  	   , takewhile( nonEmptyLine, lines)))
+			  , filter( nomuraOnly
+			  		  , map( partial(position, headers)
+			  	   		   , takewhile(nonEmptyLine, lines))))
 
 
 
