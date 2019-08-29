@@ -41,24 +41,36 @@ if not 'config' in globals():
 
 
 
-def getDbName():
+def getDbName(mode):
 	global config
-	return config['database']['name']
+	if mode == 'test':
+		return config['testdatabase']['name']
+	else:
+		return config['database']['name']
 
 
 
-def getDbHost():
+def getDbHost(mode):
 	global config
-	return config['database']['host']
+	if mode == 'test':
+		return config['testdatabase']['host']
+	else:
+		return config['database']['host']
 
 
 
-def getDbUser():
+def getDbUser(mode):
 	global config
-	return config['database']['username']
+	if mode == 'test':
+		return config['testdatabase']['username']
+	else:
+		return config['database']['username']
 
 
 
-def getDbPassword():
+def getDbPassword(mode):
 	global config
-	return config['database']['password']
+	if mode == 'test':
+		return config['testdatabase']['password']
+	else:
+		return config['database']['password']

@@ -5,6 +5,7 @@ import unittest2
 from os.path import join
 from tradefeed_cmbhk.utility import getCurrentDir
 from tradefeed_cmbhk.tfcmb import readHolding, cmbPosition
+from functools import partial
 from xlrd import open_workbook
 
 
@@ -35,7 +36,7 @@ class TestTFCmb(unittest2.TestCase):
 
     def testCmbPosition(self):
         inputFile = join(getCurrentDir(), 'samples', 'TD22082019.xlsx')
-        holding = list(map(cmbPosition, readHolding(inputFile)[1]))
+        holding = list(map(partial(cmbPosition, 'test'), readHolding(inputFile)[1]))
         self.verifyCmbHolding(holding[0])
 
 

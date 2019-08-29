@@ -69,10 +69,11 @@ def getDate(lines):
 
 
 
-def cmbPosition(ap):
+def cmbPosition(mode, ap):
 	"""
-	[Dictionary] ap => [Dictionary] position in CMBHK format
-
+	[String] mode, [Dictionary] ap => [Dictionary] position in CMBHK format
+	
+	mode: database mode
 	ap: position in AIM format (from AIM holding file)
 
 	NOTE: here we use hashlib.md5() instead of hash() to generate the
@@ -109,20 +110,20 @@ def cmbPosition(ap):
 									, 'As of Dt', 'Stl Date', 'Amount Pennies'\
 									, 'Price', 'VCurr', 'FACC Long Name'\
 									, 'Accr Int', 'Settle Amount']])
-	position['REF NO.'] = getReference(hashlib.md5(toString(ap).encode()).hexdigest())
+	position['REF NO.'] = getReference(mode, hashlib.md5(toString(ap).encode()).hexdigest())
 	return position
 
 
 
-def getReference(hashValue):
+def getReference(mode, hashValue):
 	"""
 	[String] hashValue => [String] reference code.
 	"""
-	return 'GFI' + str(1000 + findOrCreateIdFromHash(hashValue))
+	return 'GFI' + str(1000 + findOrCreateIdFromHash(mode, hashValue))
 
 
 
-def toCsv(inputFile, outputDir):
+def toCsv(inputFile, outputDir, mode):
 	"""
 	[String] intputFile, [String] outputDir => 
 		[String] outputFile name (including path)
@@ -145,7 +146,8 @@ def toCsv(inputFile, outputDir):
 	writeCsv( outputFile
 			, chain( [headers]
 				   , map( positionToRow
-						, map(cmbPosition, positions)))\
+						, map( partial(cmbPosition, mode)\
+							 , positions)))\
 			, quotechar='"'\
 			, quoting=csv.QUOTE_NONNUMERIC)
 
@@ -159,5 +161,19 @@ if __name__ == '__main__':
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
 	from tradefeed_cmbhk.utility import getCurrentDir
-	inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
-	print(toCsv(inputFile, ''))
+	import argparse
+	parser = argparse.ArgumentParser()
+	parser.add_argument('file', metavar='trade file')
+	parser.add_argument('--mode', metavar='database mode', default='test')
+	args = parser.parse_args()
+
+	"""
+	To use in command line, test database:
+
+	$ python tfcmb.py <input_file>
+
+	To use in command line, production database:
+
+	$ python tfcmb.py <input_file> --mode production
+	"""
+	print(toCsv(join(getCurrentDir(), args.file), '', args.mode))

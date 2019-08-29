@@ -11,14 +11,36 @@ logger = logging.getLogger(__name__)
 
 
 
-def lookupIDFromHash(hashValue):
+def findOrCreateIdFromHash(mode, hashValue):
 	"""
-	[String] hashValue => [Int] trade id with that hash value.
+	[String] mode, [String] hashValue=> [Int] trade id with that hash value.
+
+	mode: database mode, it is either 'test' (use test database) or
+		something else (use production database)
+
+	If a record with the hash value exists in database, find the id
+	associated with it;
+
+	If not, then create a new record for the hash value and return the id 
+	associated with it.
+	"""
+	id = lookupIDFromHash(mode, hashValue)
+	if id == None:
+		addHashToDB(mode, hashValue)
+		return lookupIDFromHash(mode, hashValue)
+	else:
+		return id
+
+
+
+def lookupIDFromHash(mode, hashValue):
+	"""
+	[String] mode, [String] hashValue => [Int] trade id with that hash value.
 
 	if lookup does not find any record in database, return None
 	"""
 	try:
-		with getConnection().cursor() as cursor:
+		with getConnection(mode).cursor() as cursor:
 			sql = "SELECT tradeid FROM trades WHERE hash='{0}'".format(hashValue)
 			cursor.execute(sql)
 			row = cursor.fetchone()
@@ -33,58 +55,44 @@ def lookupIDFromHash(hashValue):
 
 
 
-def addHashToDB(hashValue):
+def addHashToDB(mode, hashValue):
 	"""
-	[String] hashValue
+	[String] mode, [String] hashValue
 
 	Add the hash value as a new record to the database, no matter whether
 	the hash value exists.
 	"""
 	try:
-		with getConnection().cursor() as cursor:
+		with getConnection(mode).cursor() as cursor:
 			sql = "INSERT INTO trades (hash) VALUES ('{0}')".format(hashValue)
 			cursor.execute(sql)
-			getConnection().commit()
+			getConnection(mode).commit()
 	except:
 		logger.exception('addHashToDB(): ')
 
 
 
-def findOrCreateIdFromHash(hashValue):
-	"""
-	[String] hashValue => [Int] trade id with that hash value.
-
-	If a record with the hash value exists in database, find the id
-	associated with it;
-
-	If not, then create a new record for the hash value and return the id 
-	associated with it.
-	"""
-	return (lambda x: x if x != None else \
-						lookupIDFromHash(curried.do(addHashToDB)(hashValue)))\
-				(lookupIDFromHash(hashValue))
-
-
-
-connection = None
-def getConnection():
+connection = {}
+def getConnection(mode):
 	global connection
-	if connection == None:
-		logger.info('getConnection(): establish DB connection')
-		connection = pymysql.connect(host=getDbHost(),
-									user=getDbUser(),
-									password=getDbPassword(),
-									db=getDbName(),
-									cursorclass=pymysql.cursors.DictCursor)
-	return connection
+	if not mode in connection:
+		logger.info('getConnection(): establish DB connection, mode {0}'.format(mode))
+		connection[mode] = pymysql.connect( host=getDbHost(mode)\
+										  , user=getDbUser(mode)\
+										  ,	password=getDbPassword(mode)\
+										  , db=getDbName(mode)\
+										  , cursorclass=pymysql.cursors.DictCursor)
+	return connection[mode]
 
 
 
-def closeConnection():
+def closeConnection(mode):
 	global connection
-	if connection != None:
+	if mode in connection:
 		logger.info('DB connection closed')
-		connection.close()
+		connection[mode].close()
+
+	return connection.pop(mode, None)
 
 
 
