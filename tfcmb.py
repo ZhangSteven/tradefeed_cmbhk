@@ -2,20 +2,17 @@
 # 
 from xlrd import open_workbook
 from utils.excel import worksheetToLines
-from utils.utility import fromExcelOrdinal
+from utils.utility import fromExcelOrdinal, writeCsv
 from utils.iter import firstOf
 from toolz import itertoolz
 from tradefeed_cmbhk.mysql import findOrCreateIdFromHash
 from os.path import join
 from datetime import datetime
-from itertools import takewhile, dropwhile
+from itertools import takewhile, dropwhile, chain
 from functools import partial
+import hashlib
 import logging
 logger = logging.getLogger(__name__)
-
-
-
-toDateString = lambda f: fromExcelOrdinal(f).strftime('%m%d%Y')
 
 
 
@@ -42,6 +39,7 @@ def getPosition(lines):
 	nonEmptyLine = lambda L: False if len(L) == 0 else nonEmptyString(L[0])
 	headerLine = lambda L: L[0] == 'Fund' if len(L) > 0 else False
 	nomuraOnly = lambda p: p['Fund'] == '40017-B'
+	toDateString = lambda f: fromExcelOrdinal(f).strftime('%d%m%Y')
 
 	def updateValue(p):
 		p['As of Dt'] = toDateString(p['As of Dt'])
@@ -64,7 +62,7 @@ def getDate(lines):
 	"""
 	transformDate = lambda x: datetime.strftime( datetime.strptime( x
 																  , '%m/%d/%y')\
-										       , '%m%d%Y')
+										       , '%Y-%m-%d')
 	getDateString = lambda x: x.split()[-1]
 
 	return transformDate(getDateString(itertoolz.second(lines)[0]))
@@ -76,6 +74,16 @@ def cmbPosition(ap):
 	[Dictionary] ap => [Dictionary] position in CMBHK format
 
 	ap: position in AIM format (from AIM holding file)
+
+	NOTE: here we use hashlib.md5() instead of hash() to generate the
+	unique hash value for a trade. Because for the same string, different
+	invocations of python gives difference results, i.e., if we open Python
+	and calculates hash() for the same string a few times, gives the same
+	result; However if we close Python and invoke again, hash() for the
+	same string give different result!
+
+	Therefore we use md5() because it always gives the same result for the
+	same string.
 	"""
 	position = {}
 	position['CLIENT A/C NO.'] = '20190519052401'
@@ -95,7 +103,13 @@ def cmbPosition(ap):
 	position['SETT CCY	'] = ap['VCurr']
 	position['NET AMT BASE'] = ap['Settle Amount']
 	position['CORRESPONDENT'] = 'NOMURA'
-	position['REF NO.'] = getReference(str(hash(frozenset(position.items()))))
+
+	toString = lambda p: ''.join([str(p[h]) for h in \
+									[ 'ISIN', 'Long Description', 'B/S'\
+									, 'As of Dt', 'Stl Date', 'Amount Pennies'\
+									, 'Price', 'VCurr', 'FACC Long Name'\
+									, 'Accr Int', 'Settle Amount']])
+	position['REF NO.'] = getReference(hashlib.md5(toString(ap).encode()).hexdigest())
 	return position
 
 
@@ -108,69 +122,29 @@ def getReference(hashValue):
 
 
 
-def fileNameFromPath(inputFile):
+def toCsv(inputFile, outputDir):
 	"""
-	[String] inputFile => [String] the file name after stripping the path
-
-	Assuming the path is Windows style, i.e., C:\Temp\File.txt
-	"""
-	return inputFile.split('\\')[-1]
-
-
-
-def getOutputFileName(inputFile, outputDir, prefix):
-	"""
-	[String] inputFile, [String] outputDir, [String] prefix =>
-		[String] output file name (with path)
-	"""
-	return join(outputDir, prefix + getDateFromFilename(inputFile) + '.csv')
-
-
-
-def getDateFromFilename(inputFile):
-    """
-    [String] inputFile => [String] date (yyyy-mm-dd)
-
-    inputFile filename looks like:
-
-    SecurityHoldingPosition-CMFHK XXX SP-20190531.XLS
-    DailyCashHolding-CMFHK XXX SP-20190531.XLS
-    """
-    dateString = fileNameFromPath(inputFile).split('.')[0].split('-')[2]
-    return dateString[0:4] + '-' + dateString[4:6] + '-' + dateString[6:8]
-
-
-
-def toCsv(portId, inputFile, outputDir, prefix):
-	"""
-	[String] portId, [String] intputFile, [String] outputDir, [String] prefix
-		=> [String] outputFile name (including path)
+	[String] intputFile, [String] outputDir => 
+		[String] outputFile name (including path)
 
 	Side effect: create an output csv file
-
-	This function is to be called by the recon_helper.py from reconciliation_helper
-	package.
 	"""
-	if isHoldingFile(inputFile):
-		gPositions = map(partial(genevaPosition, portId, getDateFromFilename(inputFile))
-	                            , readHolding(open_workbook(inputFile).sheet_by_index(0)
-	                             			 , getStartRow()))
-		headers = ['portfolio', 'custodian', 'date', 'geneva_investment_id',
-					'ISIN', 'bloomberg_figi', 'name', 'currency', 'quantity']
-		prefix = prefix + 'holding_'
+	headers = [ 'CLIENT A/C NO.', 'REF NO.', 'SEC ID TYPE', 'SEC ID'\
+			  , 'SEC NAME',	'TRAN TYPE', 'TRADE DATE', 'SETT DATE',	'QTY/NOMINAL'\
+			  ,	'SEC CCY', 'PRICE',	'GROSS AMT', 'FEE CCY',	'COMMISSION'\
+			  , 'STAMP DUTY', 'TAXES AND OTHER FEES', 'ACCRUED INT', 'NET AMT'\
+			  ,	'SETT CCY', 'NET AMT BASE',	'CORRESPONDENT', 'BROKER', 'BROKER A/C'\
+			  ,	'CLEARER AGENT', 'CLEARER AGENT A/C', 'INTERMEDIATE AGENT'\
+			  , 'INTERMEDIATE AGENT A/C', 'PSET', 'PLACE OF SAFEKEEPING'\
+			  ,	'REMARKS', 'MESSAGE FUNCTION']
 
-	elif isCashFile(inputFile):
-		gPositions = map(partial(genevaCash, portId, getDateFromFilename(inputFile))
-                        , readCash(open_workbook(inputFile).sheet_by_index(0)))
-		headers = ['portfolio', 'custodian', 'date', 'currency', 'balance']
-		prefix = prefix + 'cash_'
-
-	else:
-		raise ValueError('toCsv(): invalid input file {0}'.format(inputFile))
-
-	rows = map(partial(dictToValues, headers), gPositions)
-	outputFile = getOutputFileName(inputFile, outputDir, prefix)
-	writeCsv(outputFile, chain([headers], rows), '|')
+	date, positions = readHolding(inputFile)
+	outputFile = join(outputDir, 'Trade Blotter Nomura ' + date + '.csv')
+	positionToRow = lambda position: [(lambda h: position[h] if h in position else '')(h) \
+										for h in headers]
+	writeCsv(outputFile, chain( [headers]
+							  , map( positionToRow
+								   , map(cmbPosition, positions))))
 	return outputFile
 
 
@@ -203,6 +177,5 @@ if __name__ == '__main__':
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
 	from tradefeed_cmbhk.utility import getCurrentDir
-	inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
-	for x in readHolding(open_workbook(inputFile).sheet_by_index(0), 3):
-		print(x)
+	inputFile = join(getCurrentDir(), 'samples', 'TD22082019.xlsx')
+	print(toCsv(inputFile, ''))
