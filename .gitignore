@@ -3,3 +3,6 @@ __pycache__/
 
 # ignore the log file
 logs/*.log
+
+# ignore the csv file
+*.csv
