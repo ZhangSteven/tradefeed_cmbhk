@@ -19,7 +19,7 @@ class TestTFCmb(unittest2.TestCase):
     def testReadHolding(self):
         inputFile = join(getCurrentDir(), 'samples', 'TD08082019.xlsx')
         date, holding = (lambda x: (x[0], list(x[1])))(readHolding(inputFile))
-        self.assertEqual('2019-08-08', date)
+        self.assertEqual('08Aug2019', date)
         self.assertEqual(3, len(holding))
         self.verifyHolding(holding[0])
 
@@ -28,7 +28,7 @@ class TestTFCmb(unittest2.TestCase):
     def testReadHolding2(self):
         inputFile = join(getCurrentDir(), 'samples', 'TD22082019.xlsx')
         date, holding = (lambda x: (x[0], list(x[1])))(readHolding(inputFile))
-        self.assertEqual('2019-08-22', date)
+        self.assertEqual('22Aug2019', date)
         self.assertEqual(2, len(holding))
         self.verifyHolding2(holding[1])
 
@@ -45,7 +45,7 @@ class TestTFCmb(unittest2.TestCase):
         """
         First trade
         """
-        self.assertEqual(len(record), 20)
+        self.assertEqual(len(record), 21)
         self.assertEqual('40017-B', record['Fund'])
         self.assertEqual('US912828YB05', record['ISIN'])
         self.assertEqual(1.625, record['Coupon'])
@@ -59,7 +59,7 @@ class TestTFCmb(unittest2.TestCase):
 
 
     def verifyHolding2(self, record):
-        self.assertEqual(len(record), 20)
+        self.assertEqual(len(record), 21)
         self.assertEqual('40017-B', record['Fund'])
         self.assertEqual('XS1627599142', record['ISIN'])
         self.assertEqual(6.25, record['Coupon'])
@@ -73,7 +73,7 @@ class TestTFCmb(unittest2.TestCase):
 
 
     def verifyCmbHolding(self, record):
-        self.assertEqual('20190519052401', record['CLIENT A/C NO.'])
+        self.assertEqual('20190519052401	', record['CLIENT A/C NO.'])
         self.assertEqual('11', record['SEC ID TYPE'])
         self.assertEqual('XS1960071303', record['SEC ID'])
         self.assertEqual('BUY', record['TRAN TYPE'])
@@ -81,6 +81,7 @@ class TestTFCmb(unittest2.TestCase):
         self.assertEqual('26082019', record['SETT DATE'])
         self.assertEqual(1000000.00, record['QTY/NOMINAL'])
         self.assertEqual('USD', record['SEC CCY'])
+        self.assertEqual('USD', record['SETT CCY'])
         self.assertEqual(101.875, record['PRICE'])
         self.assertEqual(1018750, record['GROSS AMT'])
         self.assertEqual('USD', record['FEE CCY'])

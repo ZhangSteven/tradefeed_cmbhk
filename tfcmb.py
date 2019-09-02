@@ -62,7 +62,7 @@ def getDate(lines):
 	"""
 	transformDate = lambda x: datetime.strftime( datetime.strptime( x
 																  , '%m/%d/%y')\
-										       , '%Y-%m-%d')
+										       , '%d%b%Y')
 	getDateString = lambda x: x.split()[-1]
 
 	return transformDate(getDateString(itertoolz.second(lines)[0]))
@@ -87,7 +87,8 @@ def cmbPosition(mode, ap):
 	same string.
 	"""
 	position = {}
-	position['CLIENT A/C NO.'] = '20190519052401'
+	position['CLIENT A/C NO.'] = '20190519052401	'	# add a tab so that it
+														# won't be treated as number
 	position['SEC ID TYPE'] = '11'
 	position['SEC ID'] = ap['ISIN']
 	position['SEC NAME'] = ap['Long Description']
@@ -97,11 +98,11 @@ def cmbPosition(mode, ap):
 	position['QTY/NOMINAL'] = ap['Amount Pennies']
 	position['SEC CCY'] = ap['VCurr']
 	position['PRICE'] = ap['Price']
-	position['GROSS AMT'] = ap['Settle Amount'] - ap['Accr Int']
+	position['GROSS AMT'] = ap['Principal']
 	position['FEE CCY'] = ap['VCurr']
 	position['ACCRUED INT'] = ap['Accr Int']
 	position['NET AMT'] = ap['Settle Amount']
-	position['SETT CCY	'] = ap['VCurr']
+	position['SETT CCY'] = ap['VCurr']
 	position['NET AMT BASE'] = ap['Settle Amount']
 	position['CORRESPONDENT'] = 'NOMURA'
 
@@ -140,7 +141,7 @@ def toCsv(inputFile, outputDir, mode):
 			  ,	'REMARKS', 'MESSAGE FUNCTION']
 
 	date, positions = readHolding(inputFile)
-	outputFile = join(outputDir, 'Trade Blotter Nomura ' + date + '.csv')
+	outputFile = join(outputDir, 'Trade Blotter ' + date + '_Nomura.csv')
 	positionToRow = lambda position: [(lambda h: position[h] if h in position else '')(h) \
 										for h in headers]
 	writeCsv( outputFile
