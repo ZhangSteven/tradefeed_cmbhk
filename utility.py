@@ -43,10 +43,19 @@ if not 'config' in globals():
 
 def getInputDirectory():
 	global config
-	if config['input']['directory'] == '':
+	if config['directory']['input'] == '':
 		return getCurrentDir()
 	else:
-		return config['input']['directory']
+		return config['directory']['input']
+
+
+
+def getOutputDirectory():
+	global config
+	if config['directory']['output'] == '':
+		return getCurrentDir()
+	else:
+		return config['directory']['output']
 
 
 
@@ -83,3 +92,27 @@ def getDbPassword(mode):
 		return config['testdatabase']['password']
 	else:
 		return config['database']['password']
+
+
+
+def getMailSender():
+	global config
+	return config['email']['sender']
+
+
+
+def getMailRecipients():
+	global config
+	return config['email']['recipents']
+
+
+
+def getMailServer():
+	global config
+	return config['email']['server']
+
+
+
+def getMailTimeout():
+	global config
+	return float(config['email']['timeout'])
