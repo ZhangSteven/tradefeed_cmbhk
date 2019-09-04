@@ -41,6 +41,15 @@ if not 'config' in globals():
 
 
 
+def getInputDirectory():
+	global config
+	if config['input']['directory'] == '':
+		return getCurrentDir()
+	else:
+		return config['input']['directory']
+
+
+
 def getDbName(mode):
 	global config
 	if mode == 'test':
