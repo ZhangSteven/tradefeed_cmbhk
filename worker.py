@@ -64,4 +64,4 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
-	print(getInputFile())
+	main()
