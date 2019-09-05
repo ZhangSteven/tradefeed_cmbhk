@@ -4,6 +4,7 @@ from tradefeed_cmbhk.utility import getInputDirectory, getOutputDirectory\
 						, getMailSender, getMailRecipients, getMailServer\
 						, getMailTimeout
 from tradefeed_cmbhk.tfcmb import toCsv
+from IB.worker import sendNotification
 from utils.file import getFiles
 from utils.mail import sendMail
 from os.path import join
