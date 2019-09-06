@@ -59,6 +59,12 @@ def getOutputDirectory():
 
 
 
+def getMoveDirectory():
+	global config
+	return join(getInputDirectory(), config['directory']['move'])
+
+
+
 def getDbName(mode):
 	global config
 	if mode == 'test':

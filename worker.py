@@ -2,12 +2,13 @@
 # 
 from tradefeed_cmbhk.utility import getInputDirectory, getOutputDirectory\
 						, getMailSender, getMailRecipients, getMailServer\
-						, getMailTimeout
+						, getMailTimeout, getMoveDirectory
 from tradefeed_cmbhk.tfcmb import toCsv
 from IB.worker import sendNotification
 from utils.file import getFiles
 from utils.mail import sendMail
 from os.path import join
+import shutil
 import logging
 logger = logging.getLogger(__name__)
 
@@ -22,9 +23,13 @@ def main():
 	3. Send email notification about the result.
 	"""
 	result = ''
+	inputFile = getInputFile()
 	try:
-		inputFile = getInputFile()
-		result = toCsv(inputFile, getOutputDirectory(), 'production')
+		result = toCsv( join(getInputDirectory(), inputFile)
+					  , getOutputDirectory(), 'production')
+
+		shutil.move( join(getInputDirectory(), inputFile)
+				   , join(getMoveDirectory(), inputFile))
 	except:
 		logger.exception('main()')
 
@@ -54,10 +59,12 @@ def getInputFile():
 	logger.debug('getInputFile(): searching for files in {0}'.format(getInputDirectory()))
 	files = list(filter( lambda f: f.startswith('TD') and f.endswith('.xlsx')
 					   , getFiles(getInputDirectory())))
-	if len(files) != 1:
-		raise ValueError('invalid number of files')
+	if len(files) == 0:
+		raise ValueError('No input file found')
+	elif len(files) > 1:
+		raise ValueError('Too many input files: {0}'.format(files))
 	else:
-		return join(getInputDirectory(), files[0])
+		return files[0]
 
 
 
