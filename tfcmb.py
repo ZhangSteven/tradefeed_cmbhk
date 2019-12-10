@@ -169,11 +169,14 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	"""
-	To use in command line, test database:
+	To do test in command line mode, do:
 
 	$ python tfcmb.py <input_file>
 
-	To use in command line, production database:
+	The above connects to the test database and creates the output file
+	in the local directory.
+
+	To connect to production database in command line, do:
 
 	$ python tfcmb.py <input_file> --mode production
 	"""
