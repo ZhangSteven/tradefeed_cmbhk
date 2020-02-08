@@ -6,3 +6,6 @@ logs/*.log
 
 # ignore the csv file
 *.csv
+
+# ignore the processed files
+processed/

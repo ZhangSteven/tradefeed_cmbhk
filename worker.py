@@ -1,5 +1,7 @@
 # coding=utf-8
 # 
+# Converts an input file to the output and send notification email
+# 
 from tradefeed_cmbhk.utility import getInputDirectory, getOutputDirectory\
 						, getMailSender, getMailRecipients, getMailServer\
 						, getMailTimeout, getMoveDirectory
@@ -72,4 +74,12 @@ if __name__ == '__main__':
 	import logging.config
 	logging.config.fileConfig('logging.config', disable_existing_loggers=False)
 
+	"""
+	Read an input file from the input directory, defined in tfcmbhk.config,
+	then:
+
+	1. Convert it to the output csv file
+	2. Send notification email
+	3. Move the input to another directory.
+	"""
 	main()
