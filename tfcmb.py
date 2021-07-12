@@ -37,13 +37,13 @@ def getPosition(lines):
 	nonEmptyString = lambda s: s != ''
 	position = lambda headers, values: dict(zip(headers, values))
 	nonEmptyLine = lambda L: False if len(L) == 0 else nonEmptyString(L[0])
-	headerLine = lambda L: L[0] == 'Fund' if len(L) > 0 else False
-	nomuraOnly = lambda p: p['Fund'] == '40017-B'
+	headerLine = lambda L: L[0] == 'Trader Name' if len(L) > 0 else False
+	nomuraOnly = lambda p: p['Trader Name'] == '40017-B'
 	toDateString = lambda f: fromExcelOrdinal(f).strftime('%d%m%Y')
 
 	def updateValue(p):
-		p['As of Dt'] = toDateString(p['As of Dt'])
-		p['Stl Date'] = toDateString(p['Stl Date'])
+		p['As of Date'] = toDateString(p['As of Date'])
+		p['Settlement Date'] = toDateString(p['Settlement Date'])
 		return p
 
 	headers = list(takewhile(nonEmptyString, firstOf(headerLine, lines)))
@@ -61,7 +61,7 @@ def getDate(lines):
 	lines: from the Bloomberg exported trade file (Excel)
 	"""
 	transformDate = lambda x: datetime.strftime( datetime.strptime( x
-																  , '%m/%d/%y')\
+																  , '%d/%m/%y')\
 										       , '%d%b%Y')
 	getDateString = lambda x: x.split()[-1]
 
@@ -90,27 +90,27 @@ def cmbPosition(mode, ap):
 	position['CLIENT A/C NO.'] = '20190519052401	'	# add a tab so that it
 														# won't be treated as number
 	position['SEC ID TYPE'] = '11'
-	position['SEC ID'] = ap['ISIN']
-	position['SEC NAME'] = ap['Long Description']
-	position['TRAN TYPE'] = {'B': 'BUY', 'S': 'SELL'}[ap['B/S']]
-	position['TRADE DATE'] = ap['As of Dt']
-	position['SETT DATE'] = ap['Stl Date']
-	position['QTY/NOMINAL'] = ap['Amount Pennies']
-	position['SEC CCY'] = ap['VCurr']
-	position['PRICE'] = ap['Price']
+	position['SEC ID'] = ap['ISIN Number']
+	position['SEC NAME'] = ap['Security Description']
+	position['TRAN TYPE'] = {'B': 'BUY', 'S': 'SELL'}[ap['Buy/Sell']]
+	position['TRADE DATE'] = ap['As of Date']
+	position['SETT DATE'] = ap['Settlement Date']
+	position['QTY/NOMINAL'] = ap['Amount (Pennies)']
+	position['SEC CCY'] = ap['View in Currency']
+	position['PRICE'] = ap['Trade price']
 	position['GROSS AMT'] = ap['Principal']
-	position['FEE CCY'] = ap['VCurr']
-	position['ACCRUED INT'] = ap['Accr Int']
-	position['NET AMT'] = ap['Settle Amount']
-	position['SETT CCY'] = ap['VCurr']
-	position['NET AMT BASE'] = ap['Settle Amount']
+	position['FEE CCY'] = ap['View in Currency']
+	position['ACCRUED INT'] = ap['Accrued Interest']
+	position['NET AMT'] = ap['Settlement Total in Settlemen']
+	position['SETT CCY'] = ap['View in Currency']
+	position['NET AMT BASE'] = ap['Settlement Total in Settlemen']
 	position['CORRESPONDENT'] = 'NOMURA'
 
 	toString = lambda p: ''.join([str(p[h]) for h in \
-									[ 'ISIN', 'Long Description', 'B/S'\
-									, 'As of Dt', 'Stl Date', 'Amount Pennies'\
-									, 'Price', 'VCurr', 'FACC Long Name'\
-									, 'Accr Int', 'Settle Amount']])
+									[ 'ISIN Number', 'Security Description', 'Buy/Sell'\
+									, 'As of Date', 'Settlement Date', 'Amount (Pennies)'\
+									, 'Trade price', 'View in Currency', 'Firm Account Long Name'\
+									, 'Accrued Interest', 'Settlement Total in Settlemen']])
 	position['REF NO.'] = getReference(mode, hashlib.md5(toString(ap).encode()).hexdigest())
 	return position
 
